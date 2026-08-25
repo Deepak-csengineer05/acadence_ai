@@ -5,7 +5,7 @@ import { API_BASE } from '../config/api';
 import { 
   ArrowLeft, ArrowRight, Check, Eye, EyeOff, ShieldCheck, Mail, Key, Sparkles, 
   BookOpen, User as UserIcon, BookMarked, Brain, HelpCircle, Building, Calendar, Lock, BarChart2, Users, 
-  ArrowRightIcon
+  ArrowRightIcon, Loader2
 } from 'lucide-react';
 
 function Auth({ 
@@ -22,6 +22,8 @@ function Auth({
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [localError, setLocalError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [googleSubmitting, setGoogleSubmitting] = useState(false);
 
   // Verification & Reset states
   const [emailForReset, setEmailForReset] = useState("");
@@ -53,10 +55,12 @@ function Auth({
     setCurrentView(authMode);
   }, [authMode]);
 
-  // Reset errors and messages when view changes
+  // Reset errors, messages and spinners when view changes
   useEffect(() => {
     setLocalError("");
     setSuccessMessage("");
+    setIsSubmitting(false);
+    setGoogleSubmitting(false);
   }, [currentView]);
 
   // Real Google OAuth GIS Client setup
@@ -72,9 +76,14 @@ function Auth({
           window.google.accounts.id.initialize({
             client_id: googleClientId,
             auto_select: false,
-            callback: (response) => {
+            callback: async (response) => {
               if (response.credential) {
-                handleGoogleMockLogin(response.credential);
+                setGoogleSubmitting(true);
+                try {
+                  await handleGoogleMockLogin(response.credential);
+                } finally {
+                  setGoogleSubmitting(false);
+                }
               }
             }
           });
@@ -96,21 +105,23 @@ function Auth({
     }
   }, [googleClientId]);
 
-  const triggerRealGoogleLogin = () => {
-    if (googleClientId && window.google?.accounts?.id) {
-      try {
+  const triggerRealGoogleLogin = async () => {
+    setGoogleSubmitting(true);
+    try {
+      if (googleClientId && window.google?.accounts?.id) {
         window.google.accounts.id.prompt((notification) => {
           if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
             console.warn("Google One-Tap not displayed:", notification.getNotDisplayedReason?.());
-            // Fallback to local sign in if Google Cloud origin is not authorized (403 Forbidden)
-            handleGoogleMockLogin();
+            handleGoogleMockLogin().finally(() => setGoogleSubmitting(false));
           }
         });
-      } catch (err) {
-        handleGoogleMockLogin();
+      } else {
+        await handleGoogleMockLogin();
       }
-    } else {
-      handleGoogleMockLogin();
+    } catch (err) {
+      await handleGoogleMockLogin();
+    } finally {
+      setTimeout(() => setGoogleSubmitting(false), 1200);
     }
   };
 
@@ -157,6 +168,16 @@ function Auth({
     }
   };
 
+  const onSignInFormSubmit = async (e) => {
+    if (e) e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      await handleAuthSubmit(e);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   // 1. Submit Registration & move to Email Verification
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
@@ -175,6 +196,7 @@ function Auth({
       return;
     }
 
+    setIsSubmitting(true);
     try {
       const res = await fetch(`${API_BASE}/auth/register`, {
         method: "POST",
@@ -205,6 +227,8 @@ function Auth({
       }
     } catch (err) {
       setLocalError("Failed to communicate with authorization server.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -447,7 +471,7 @@ function Auth({
                   {authError && <div className="auth-alert error">{authError}</div>}
                   {successMessage && <div className="auth-alert success">{successMessage}</div>}
 
-                  <form onSubmit={(e) => handleAuthSubmit(e)}>
+                  <form onSubmit={onSignInFormSubmit}>
                     
                     <div className="form-group">
                       <label className="form-label">College Email / Username</label>
@@ -491,8 +515,17 @@ function Auth({
                       </div>
                     </div>
 
-                    <button className="btn btn-gradient-get-started w-full" type="submit">
-                      Sign In <ArrowRight size={18} style={{ marginLeft: '8px' }} />
+                    <button className="btn btn-gradient-get-started w-full" type="submit" disabled={isSubmitting || googleSubmitting}>
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 size={18} className="animate-spin" style={{ marginRight: '8px' }} />
+                          Signing In...
+                        </>
+                      ) : (
+                        <>
+                          Sign In <ArrowRight size={18} style={{ marginLeft: '8px' }} />
+                        </>
+                      )}
                     </button>
                   </form>
 
@@ -500,14 +533,23 @@ function Auth({
                     <span>or continue with</span>
                   </div>
 
-                  <button className="google-btn-signin" type="button" onClick={triggerRealGoogleLogin}>
-                    <svg width="18" height="18" viewBox="0 0 18 18" style={{ marginRight: '6px' }}>
-                      <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
-                      <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/>
-                      <path d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.995 8.995 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z" fill="#FBBC05"/>
-                      <path d="M9 3.579c1.32 0 2.508.454 3.44 1.345l2.582-2.58C13.463.896 11.428 0 9 0 5.482 0 2.438 2.017.957 4.962l3.007 2.332C4.672 5.163 6.656 3.579 9 3.579z" fill="#EA4335"/>
-                    </svg>
-                    Sign in with Google
+                  <button className="google-btn-signin" type="button" onClick={triggerRealGoogleLogin} disabled={isSubmitting || googleSubmitting}>
+                    {googleSubmitting ? (
+                      <>
+                        <Loader2 size={18} className="animate-spin" style={{ marginRight: '8px' }} />
+                        Authenticating...
+                      </>
+                    ) : (
+                      <>
+                        <svg width="18" height="18" viewBox="0 0 18 18" style={{ marginRight: '6px' }}>
+                          <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
+                          <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/>
+                          <path d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.995 8.995 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z" fill="#FBBC05"/>
+                          <path d="M9 3.579c1.32 0 2.508.454 3.44 1.345l2.582-2.58C13.463.896 11.428 0 9 0 5.482 0 2.438 2.017.957 4.962l3.007 2.332C4.672 5.163 6.656 3.579 9 3.579z" fill="#EA4335"/>
+                        </svg>
+                        Sign in with Google
+                      </>
+                    )}
                   </button>
 
                   <div className="auth-toggle">
@@ -658,8 +700,17 @@ function Auth({
                       </div>
                     </div>
 
-                    <button className="btn btn-gradient-get-started w-full" type="submit" style={{ marginTop: '20px' }}>
-                      Create Account <ArrowRight size={18} style={{ marginLeft: '8px' }} />
+                    <button className="btn btn-gradient-get-started w-full" type="submit" style={{ marginTop: '20px' }} disabled={isSubmitting || googleSubmitting}>
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 size={18} className="animate-spin" style={{ marginRight: '8px' }} />
+                          Creating Account...
+                        </>
+                      ) : (
+                        <>
+                          Create Account <ArrowRight size={18} style={{ marginLeft: '8px' }} />
+                        </>
+                      )}
                     </button>
                   </form>
 
@@ -667,14 +718,23 @@ function Auth({
                     <span>or continue with</span>
                   </div>
 
-                  <button className="google-btn-signup" type="button" onClick={triggerRealGoogleLogin}>
-                    <svg width="18" height="18" viewBox="0 0 18 18" style={{ marginRight: '6px' }}>
-                      <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
-                      <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/>
-                      <path d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.995 8.995 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z" fill="#FBBC05"/>
-                      <path d="M9 3.579c1.32 0 2.508.454 3.44 1.345l2.582-2.58C13.463.896 11.428 0 9 0 5.482 0 2.438 2.017.957 4.962l3.007 2.332C4.672 5.163 6.656 3.579 9 3.579z" fill="#EA4335"/>
-                    </svg>
-                    Sign up with Google
+                  <button className="google-btn-signup" type="button" onClick={triggerRealGoogleLogin} disabled={isSubmitting || googleSubmitting}>
+                    {googleSubmitting ? (
+                      <>
+                        <Loader2 size={18} className="animate-spin" style={{ marginRight: '8px' }} />
+                        Authenticating...
+                      </>
+                    ) : (
+                      <>
+                        <svg width="18" height="18" viewBox="0 0 18 18" style={{ marginRight: '6px' }}>
+                          <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
+                          <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/>
+                          <path d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.995 8.995 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z" fill="#FBBC05"/>
+                          <path d="M9 3.579c1.32 0 2.508.454 3.44 1.345l2.582-2.58C13.463.896 11.428 0 9 0 5.482 0 2.438 2.017.957 4.962l3.007 2.332C4.672 5.163 6.656 3.579 9 3.579z" fill="#EA4335"/>
+                        </svg>
+                        Sign up with Google
+                      </>
+                    )}
                   </button>
 
                   <div className="auth-toggle">

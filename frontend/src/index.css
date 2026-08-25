@@ -4393,6 +4393,11 @@ select.form-input.form-select option {
   transform: translateY(-0.5px);
 }
 
+.google-btn-signin:active {
+  transform: scale(0.97) translateY(0);
+  background-color: #f1f5f9;
+}
+
 .google-btn-signup {
   background-color: transparent;
   color: #ffffff;
@@ -4412,6 +4417,22 @@ select.form-input.form-select option {
 .google-btn-signup:hover {
   background-color: rgba(255, 255, 255, 0.05);
   border-color: rgba(255, 255, 255, 0.3);
+}
+
+.google-btn-signup:active {
+  transform: scale(0.97) translateY(0);
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.google-btn-signin:disabled,
+.google-btn-signup:disabled {
+  opacity: 0.6;
+  cursor: wait;
+  transform: none !important;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
 }
 
 /* Full Size Left Image Column */

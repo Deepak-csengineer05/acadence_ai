@@ -89,6 +89,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -97,8 +98,9 @@ app.add_middleware(
 # Import routes
 from app.routes import auth, categories, documents, interviews, search, leaderboard, notifications, admin
 
-# Register routers
+# Register routers under both /api/v1 and legacy/direct paths for fail-safe frontend VITE_API_BASE_URL compatibility
 app.include_router(auth.router, prefix=settings.API_V1_STR)
+app.include_router(auth.router, prefix="/auth")  # Fallback for VITE_API_BASE_URL without /api/v1
 app.include_router(categories.router, prefix=settings.API_V1_STR)
 app.include_router(documents.router, prefix=settings.API_V1_STR)
 app.include_router(interviews.router, prefix=settings.API_V1_STR)
