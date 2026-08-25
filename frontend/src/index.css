@@ -3814,10 +3814,6 @@ body {
 }
 
 @media (max-width: 580px) {
-  .landing-section {
-    padding: 50px 16px;
-  }
-
   .landing-header {
     padding: 0 15px;
     height: 70px;
@@ -3893,41 +3889,25 @@ body {
   }
 
   .cta-banner-card {
-    padding: 24px 16px;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .cta-banner-text {
-    width: 100%;
-    box-sizing: border-box;
+    padding: 30px 15px;
   }
 
   .cta-banner-text h2 {
-    font-size: 20px;
-    line-height: 1.25;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
+    font-size: 22px;
   }
 
-  .cta-banner-text p {
-    font-size: 13.5px;
-    line-height: 1.5;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    max-width: 100%;
+  .cta-banner-img {
+    height: 190px;
   }
 
   .cta-banner-actions {
     flex-direction: column;
     width: 100%;
     gap: 12px;
-    box-sizing: border-box;
   }
 
   .cta-banner-actions .btn {
     width: 100%;
-    box-sizing: border-box;
   }
 
   .footer-links-grid {
@@ -3942,22 +3922,6 @@ body {
 }
 
 @media (max-width: 400px) {
-  .landing-section {
-    padding: 40px 12px;
-  }
-
-  .cta-banner-card {
-    padding: 20px 12px;
-  }
-
-  .cta-banner-text h2 {
-    font-size: 18px;
-  }
-
-  .cta-banner-text p {
-    font-size: 13px;
-  }
-
   .logo-text {
     font-size: 14px;
   }
