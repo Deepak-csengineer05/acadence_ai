@@ -3,14 +3,19 @@ import asyncio
 from typing import List, Dict
 from qdrant_client import QdrantClient
 from qdrant_client.http import models as qmodels
-from sentence_transformers import SentenceTransformer
-
 from app.core.config import settings
 
-# Initialize SentenceTransformer globally for embedding generation
-print("[*] Loading embedding model: all-MiniLM-L6-v2...")
-embedding_model = SentenceTransformer(settings.EMBEDDING_MODEL_NAME)
-print("[+] Embedding model loaded successfully.")
+_embedding_model = None
+
+def get_embedding_model():
+    """Lazy loader for SentenceTransformer to save startup RAM on free cloud hosting."""
+    global _embedding_model
+    if _embedding_model is None:
+        print("[*] Lazy loading embedding model: all-MiniLM-L6-v2...")
+        from sentence_transformers import SentenceTransformer
+        _embedding_model = SentenceTransformer(settings.EMBEDDING_MODEL_NAME)
+        print("[+] Embedding model loaded successfully.")
+    return _embedding_model
 
 # Initialize Qdrant Client (supports remote Client-Server / Qdrant Cloud or local disk fallback)
 if settings.QDRANT_URL:
@@ -45,7 +50,8 @@ class VectorService:
     @staticmethod
     def get_embeddings(text: str) -> List[float]:
         """Synchronous dense vector generation."""
-        return embedding_model.encode(text).tolist()
+        model = get_embedding_model()
+        return model.encode(text).tolist()
 
     @staticmethod
     async def async_get_embeddings(text: str) -> List[float]:
